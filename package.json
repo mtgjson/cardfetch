@@ -1,0 +1,17 @@
+{
+  "name": "mtgjson-cardparse",
+  "version": "1.0.0",
+  "description": "Card Parser for MTGJSON",
+  "main": "index.js",
+  "author": "Sergio Moura <sergio@moura.ca>",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^0.22.0",
+    "node-fetch": "^1.6.3",
+    "uuid": "^3.0.1"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-preset-env": "^1.4.0"
+  }
+}
