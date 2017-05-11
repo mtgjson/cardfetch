@@ -7,11 +7,15 @@
   "license": "MIT",
   "dependencies": {
     "cheerio": "^0.22.0",
+    "moment": "^2.18.1",
     "node-fetch": "^1.6.3",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
     "babel-preset-env": "^1.4.0"
+  },
+  "scripts": {
+    "test": "babel-node test.js"
   }
 }

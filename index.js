@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import cheerio from 'cheerio';
+import moment from 'moment';
 
 export const parseManaSymbols = (parentElement) => {
   let manaSymbols = [];
@@ -103,50 +104,59 @@ export const parseCardText = (cardTextElement) => {
   let textParts = [];
 
   cheerio(' > *', cardTextElement).each((index, element) => {
-    let raw = cheerio(element).html();
-    textParts.push(raw.replace(/<img[^>]*alt="([^"]*)"[^>]*>/g, '{$1}'));
+    textParts.push(parseCardTextBlock(element));
   });
 
-  let textReturn = textParts.join('\n').trim()
-    .replace(/&#x2212;/g, '−')
-    .replace(/&quot;/g, '"');
-
-  return textReturn;
+  return textParts.join('\n').trim();;
 };
+
+export const parseCardTextBlock = (element) => {
+  let raw = cheerio(element).html();
+  let parsedText = raw.replace(/<img[^>]*alt="([^"]*)"[^>]*>/g, '{$1}')
+    .replace(/<\/?i>/g, '')
+    .replace(/&#x2212;/g, '−')
+    .replace(/&#x2019;/g, "'")
+    .replace(/&quot;/g, '"')
+    .trim();
+
+  return parsedText;
+}
 
 export const parseCardSide = (sideElement) => {
   let sideId = cheerio('.rightCol', sideElement).attr('id');
   if (!sideId) return null;
 
+  let $ = cheerio.load(sideElement);
+
   let idPrefix = sideId.replace('_rightCol', '');
   let returnValue = {};
 
-  returnValue.name = cheerio(`#${idPrefix}_nameRow .value`, sideElement).text().trim();
+  returnValue.name = $(`#${idPrefix}_nameRow .value`).text().trim();
 
-  let manaSymbols = parseManaSymbols(cheerio(`#${idPrefix}_manaRow`, sideElement));
+  let manaSymbols = parseManaSymbols($(`#${idPrefix}_manaRow`));
   if (manaSymbols.length > 0) returnValue.manaSymbols = manaSymbols;
 
-  let cmc = cheerio(`#${idPrefix}_cmcRow .value`, sideElement).text().trim();
+  let cmc = $(`#${idPrefix}_cmcRow .value`).text().trim();
   if (cmc) returnValue.cmc = cmc;
-  returnValue.types = cheerio(`#${idPrefix}_typeRow .value`, sideElement).text().trim();
+  returnValue.types = $(`#${idPrefix}_typeRow .value`).text().trim();
 
-  let cardText = parseCardText(cheerio(`#${idPrefix}_textRow .value`, sideElement));
+  let cardText = parseCardText($(`#${idPrefix}_textRow .value`));
   if (cardText) returnValue.text = cardText;
 
-  returnValue.rarity = cheerio(`#${idPrefix}_rarityRow .value`, sideElement).text().trim();
-  returnValue.number = cheerio(`#${idPrefix}_numberRow .value`, sideElement).text().trim();
-  returnValue.artist = cheerio(`#${idPrefix}_artistRow .value`, sideElement).text().trim();
-  returnValue.expansion = cheerio(`#${idPrefix}_currentSetSymbol`, sideElement).text().trim();
-  returnValue.multiverseid = parseInt(cheerio(`#${idPrefix}_currentSetSymbol a`, sideElement).first().attr('href').replace(/.*multiverseid=/, ''), 10);
+  returnValue.rarity = $(`#${idPrefix}_rarityRow .value`).text().trim();
+  returnValue.number = $(`#${idPrefix}_numberRow .value`).text().trim();
+  returnValue.artist = $(`#${idPrefix}_artistRow .value`).text().trim();
+  returnValue.expansion = $(`#${idPrefix}_currentSetSymbol`).text().trim();
+  returnValue.multiverseid = parseInt($(`#${idPrefix}_currentSetSymbol a`).first().attr('href').replace(/.*multiverseid=/, ''), 10);
 
   let flavorTextParts = [];
-  cheerio(`#${idPrefix}_flavorRow .value > *`, sideElement).each((index, element) => {
-    flavorTextParts.push(cheerio(element).text().trim());
+  $(`#${idPrefix}_flavorRow .value > *`).each((index, element) => {
+    flavorTextParts.push($(element).text().trim());
   });
   let flavorText = flavorTextParts.join('\n').trim();
   if (flavorText) returnValue.flavor = flavorText;
 
-  let ptRow = cheerio(`#${idPrefix}_ptRow .value`, sideElement);
+  let ptRow = $(`#${idPrefix}_ptRow .value`);
   if (ptRow) ptRow = ptRow.text().trim();
   if (ptRow) {
     if (ptRow.indexOf('/') >= 0) {
@@ -159,10 +169,10 @@ export const parseCardSide = (sideElement) => {
   }
 
   let printingList = [];
-  cheerio(`#${idPrefix}_otherSetsValue a`, sideElement).each((index, element) => {
-    let multiverseid = parseInt(cheerio(element).attr('href').replace(/.*multiverseid=/, ''), 10);
-    let setInfo = cheerio('img', element).attr('src').match(/.*set=([^\&]*).*rarity=([^\&]*)/);
-    let setName = cheerio('img', element).attr('alt').replace(/ \([^)]*\)/, '');
+  $(`#${idPrefix}_otherSetsValue a`).each((index, element) => {
+    let multiverseid = parseInt($(element).attr('href').replace(/.*multiverseid=/, ''), 10);
+    let setInfo = $('img', element).attr('src').match(/.*set=([^\&]*).*rarity=([^\&]*)/);
+    let setName = $('img', element).attr('alt').replace(/ \([^)]*\)/, '');
 
     printingList.push({
       multiverseid: multiverseid,
@@ -173,10 +183,24 @@ export const parseCardSide = (sideElement) => {
   });
   if (printingList.length > 0) returnValue.printings = printingList;
 
+  let rulings = [];
+  // Rulings
+  $(`#${idPrefix}_rulingsContainer .post`).each((index, element) => {
+    let elements = $('td', element);
+    let rulingDate = elements.first().text().trim();
+    let convertedRulingDate = moment(rulingDate, 'MM/DD/YYYY').format('YYYY-MM-DD');
+    let rulingText = parseCardTextBlock(elements.last());
+    rulings.push({
+      date: convertedRulingDate,
+      text: rulingText
+    });
+  });
+  if (rulings) returnValue.rulings = rulings;
+
   return returnValue;
 };
 
-export const fetchMultiverseid = (multiverseid) => {
+const fetchMultiverseidOracle = (multiverseid) => {
   let url = `http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=${multiverseid}`;
 
   return fetch(url)
@@ -184,11 +208,62 @@ export const fetchMultiverseid = (multiverseid) => {
     .then(pageContents => {
       let $ = cheerio.load(pageContents);
       let returnValue = [];
+      let cardTitle = $('#ctl00_ctl00_ctl00_MainContent_SubContent_SubContentHeader_subtitleDisplay').text().trim();
+
       $('.cardComponentContainer').each((index, cardComponent) => {
-        returnValue.push(parseCardSide(cardComponent));
+        let cardObject = parseCardSide(cardComponent);
+        if (cardObject) {
+          cardObject.title = cardTitle;
+          returnValue.push(cardObject);
+        }
       });
 
-      return returnValue.filter(element => !!element);
+      return returnValue;
     })
     .catch(err => console.error(err));
+}
+
+const fetchMultiverseidPrinted = (multiverseid) => {
+  let url = `http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=${multiverseid}&printed=true`;
+
+  return fetch(url)
+    .then(response => response.text())
+    .then(pageContents => {
+      let $ = cheerio.load(pageContents);
+      let returnValue = [];
+      let cardTitle = $('#ctl00_ctl00_ctl00_MainContent_SubContent_SubContentHeader_subtitleDisplay').text().trim();
+
+      $('.cardComponentContainer').each((index, cardComponent) => {
+        let cardObject = parseCardSide(cardComponent);
+        if (cardObject) {
+          cardObject.title = cardTitle;
+          returnValue.push(cardObject);
+        }
+      });
+
+      return returnValue;
+    })
+    .catch(err => console.error(err));
+}
+
+export const fetchMultiverseid = (multiverseid) => {
+  let cardInfo = null;
+
+  return new Promise((accept, reject) => {
+    fetchMultiverseidOracle(multiverseid)
+      .then(response => {
+        cardInfo = response;
+        return fetchMultiverseidPrinted(multiverseid);
+      })
+      .then(response => {
+        response.forEach(cardPrintedInfo => {
+          cardInfo.forEach(returnInfo => {
+            if (returnInfo.number === cardPrintedInfo.number) returnInfo.printed = cardPrintedInfo;
+          });
+        });
+      })
+      .then(() => {
+        accept(cardInfo);
+      });
+  });
 }
