@@ -1,13 +1,16 @@
-import fetch from 'node-fetch';
 import cheerio from 'cheerio';
 import moment from 'moment';
+import {configRedis, fetchCachedUrl} from './fetchCache';
+
+export {configRedis, fetchCachedUrl};
 
 export const parseManaSymbols = (parentElement) => {
   let manaSymbols = [];
   cheerio('img', parentElement).each((index, manaLink) => {
     manaSymbols.push(cheerio(manaLink).attr('alt'));
   });
-  return manaSymbols
+  
+  return manaSymbols;
 };
 
 /*
@@ -61,8 +64,7 @@ export const fetchCardList = (setName) => {
   const fetchAtPage = (pageNumber) => {
     let url = `http://gatherer.wizards.com/Pages/Search/Default.aspx?output=compact&set=%5b%22${setName}%22%5d&page=${pageNumber}`;
     console.log('fetching %s', url);
-    return fetch(url)
-      .then(response => response.text())
+    return fetchCachedUrl(url)
       .then(
         (pageContents) => {
           let cardList = [];
@@ -203,8 +205,7 @@ export const parseCardSide = (sideElement) => {
 const fetchMultiverseidOracle = (multiverseid) => {
   let url = `http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=${multiverseid}`;
 
-  return fetch(url)
-    .then(response => response.text())
+  return fetchCachedUrl(url)
     .then(pageContents => {
       let $ = cheerio.load(pageContents);
       let returnValue = [];
@@ -226,8 +227,7 @@ const fetchMultiverseidOracle = (multiverseid) => {
 const fetchMultiverseidPrinted = (multiverseid) => {
   let url = `http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=${multiverseid}&printed=true`;
 
-  return fetch(url)
-    .then(response => response.text())
+  return fetchCachedUrl(url)
     .then(pageContents => {
       let $ = cheerio.load(pageContents);
       let returnValue = [];
