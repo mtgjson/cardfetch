@@ -18,6 +18,7 @@
     "babel-preset-env": "^1.4.0"
   },
   "scripts": {
-    "test": "babel-node test.js"
+    "test": "babel-node tests/test.js",
+    "test_redis": "babel-node tests/test_redis.js"
   }
 }

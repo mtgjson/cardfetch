@@ -1,4 +1,4 @@
-import { configRedis, fetchMultiverseid } from './index';
+import { configRedis, fetchMultiverseid } from '../index';
 
 configRedis({ expire: 1, ignoreCache: false });
 

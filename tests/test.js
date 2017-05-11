@@ -1,4 +1,4 @@
-import {fetchMultiverseid} from './index.js';
+import {fetchMultiverseid} from '../index';
 
 //fetchCardList('Amonkhet').then(cardList => { console.log(cardList.length); });
 fetchMultiverseid(369041)
