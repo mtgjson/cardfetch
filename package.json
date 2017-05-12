@@ -2,7 +2,8 @@
   "name": "mtgjson-cardparse",
   "version": "1.0.0",
   "description": "Card Parser for MTGJSON",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "url": "https://github.com/mtgjson/cardfetch",
   "author": "Sergio Moura <sergio@moura.ca>",
   "license": "MIT",
   "dependencies": {
@@ -18,6 +19,8 @@
     "babel-preset-env": "^1.4.0"
   },
   "scripts": {
+    "install": "babel --no-comments -d lib/ src/",
+    "build": "babel --no-comments -d lib/ src/",
     "test": "babel-node tests/test.js",
     "test_redis": "babel-node tests/test_redis.js"
   }

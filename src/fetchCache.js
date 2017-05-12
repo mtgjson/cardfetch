@@ -23,25 +23,25 @@ export const configRedis = (data) => {
   return redisConfig;
 }
 
+const retrieveAndSave = (url, redisClient) => {
+  return fetch(url)
+    .then(response => response.text())
+    .then(pageData => {
+      redisClient.set(url, pageData);
+      if (redisConfig.expire !== undefined) redisClient.setex(url, parseInt((+new Date)/1000) + redisConfig.expire);
+
+      return pageData;
+    });
+};
+
 export const fetchCachedUrl = (url) => {
   if (!redisConfig) return fetch(url).then(response => response.text());
-
-  const retrieveAndSave = (redisClient) => {
-    return fetch(url)
-      .then(response => response.text())
-      .then(pageData => {
-        redisClient.set(url, pageData);
-        if (redisConfig.expire !== undefined) redisClient.setex(url, parseInt((+new Date)/1000) + redisConfig.expire);
-
-        return pageData;
-      });
-  }
 
   return new Promise((accept, reject) => {
     let client = redis.createClient(redisConfig);
     client.on('connect', () => {
       if (redisConfig.ignoreCache) {
-        retrieveAndSave(client)
+        retrieveAndSave(url, client)
           .then(response => {
             client.quit();
             accept(response);
@@ -55,7 +55,7 @@ export const fetchCachedUrl = (url) => {
             return;
           }
 
-          retrieveAndSave(client)
+          retrieveAndSave(url, client)
             .then(response => {
               client.quit();
               accept(response);
